@@ -11,42 +11,48 @@ let sessionDbo = require('../dbos/session.dbo');
 * @api {get} /leaderboard To fetch leaderboard.
 * @apiName getLeaderBoard
 * @apiGroup Leaderboard
-* @apiParam {String} sortBy Attribute to sort, Available attributes [bandwidth, tokens, referral], default sortBy is 'tokens'.
+* @apiParam {String} sortBy Attribute to sort, Available attributes [rank, deviceId, tokens,referralId, noOfReferrals, noOfSessions, totalUsage ], default sortBy is 'tokens'.
+* @apiParam {Number} start Number of records to skip, default value is 0 and use positive numbers.
+* @apiParam {Number} count Number of records to return, default value is 25, use positive numbers.
+* @apiParam {String} order Order to sort [asc/desc], Default sort [desc].
+* @apiParam {String} searchKey Keyword to search.
 * @apiError ErrorWhileFetchingData Error while fetching leaderboard.
 * @apiErrorExample ErrorWhileFetchingData-Response:
 * {
 *   success: false,
-*   message: 'Error while fetching [accounts/bonuses/sessionUsage/refCount].'
+*   message: 'Error while fetching [accounts/bonuses/sessionUsage].'
 * }
 * @apiSuccessExample Response: 
 * 
 * {
 *  "success": true,
-*  "info": [
-*    {
-*      "index":   00000000
-*      "deviceId": 0000000000000000,
-*      "tokens":   0000000000000000,
-*      "referralId": "SENT-XXXXXXXX"
-*      "noOfReferrals": 00000000,
-*      "noOfSessions":  00000000,
-*      "totalUsage": XXXXXXXX (In bytes)
-*    }
-*   ]
+*  "info":{
+*      "records": [
+*      {
+*        "rank":   00000000
+*        "deviceId": 0000000000000000,
+*        "tokens":   0000000000000000,
+*        "referralId": "SENT-XXXXXXXX"
+*        "noOfReferrals": 00000000,
+*        "noOfSessions":  00000000,
+*        "totalUsage": XXXXXXXX (In bytes)
+*      }
+*     ],
+*     "count": 0000000
+*     }
 * }
-   
 */
 let getLeaderBoard = (req, res) => {
   let { sortBy,
     start,
     count,
-    order } = req.query;
-  if (sortBy === 'bandwidth') sortBy = 'totalUsage';
-  else if (sortBy === 'referral') sortBy = 'noOfReferrals'
+    order,
+    searchKey } = req.query;
   if (!sortBy) sortBy = 'tokens';
   if (!start) start = 0;
-  if (!count) count = 1000000;
+  if (!count) count = 25;
   if (!order) order = 'desc';
+  let searched = [];
   start = parseInt(start, 10);
   count = parseInt(count, 10);
   let end = start + count;
@@ -60,40 +66,28 @@ let getLeaderBoard = (req, res) => {
           }, null);
         } else next(null, accounts);
       });
-    }, (accounts, next) => {
-      let order = -1;
-      accountDbo.getSortedAccountsByRefCount(order,
-        (error, refCounts) => {
-          if (error) {
-            next({
-              status: 500,
-              message: 'Error while fetching refCounts'
-            }, null);
-          } else next(null, accounts, refCounts);
-        });
     },
-    (accounts, refCounts, next) => {
+    (accounts, next) => {
       bonusDbo.getTotalBonus((error, bonuses) => {
         if (error) {
           next({
             status: 500,
             message: 'Error while fetching bonuses'
           }, null);
-        } else next(null, accounts, refCounts, bonuses);
+        } else next(null, accounts, bonuses);
       })
-    }, (accounts, refCounts, bonuses, next) => {
+    }, (accounts, bonuses, next) => {
       sessionDbo.getTotalUsage((error, usage) => {
         if (error) {
           next({
             status: 500,
             message: 'Error while fetching usage'
           }, null);
-        } else next(null, accounts, refCounts, bonuses, usage);
+        } else next(null, accounts, bonuses, usage);
       })
-    }, (accounts, refCounts, bonuses, usage, next) => {
+    }, (accounts, bonuses, usage, next) => {
       let tmpAccounts = {};
       let tmpBonus = {};
-      let tmpRef = {};
       let tmpUsage = {};
       let final = [];
       let tmpFinal = {};
@@ -111,32 +105,29 @@ let getLeaderBoard = (req, res) => {
         (bonus) => {
           tmpBonus[bonus._id] = bonus;
         });
-      lodash.forEach(refCounts,
-        (ref) => {
-          tmpRef[ref._id] = ref.refsCount;
-        });
       lodash.forEach(bonuses,
         (bonus) => {
           tmpFinal[bonus._id] = bonus._id;
           index++;
-          final.push({
-            [sortBy !== 'tokens' ? 'rank' : 'index']: index,
+          let obj = {
+            rank: index,
             deviceId: bonus._id,
             tokens: bonus.total,
             referralId: tmpAccounts[bonus._id],
-            noOfReferrals: bonus.count // (tmpRef[tmpAccounts[bonus._id]]) ? tmpRef[tmpAccounts[bonus._id]] : 0
-          });
+            noOfReferrals: bonus.count
+          }
+          final.push(obj);
         });
       lodash.forEach(accounts,
         (account) => {
           if (!tmpFinal[account.deviceId]) {
             index++;
             final.push({
-              [sortBy != 'tokens' ? 'rank' : 'index']: index,
+              rank: index,
               deviceId: account.deviceId,
               tokens: 0,
               referralId: account.referralId,
-              noOfReferrals: tmpBonus[account.deviceId].count //(tmpRef[account.referralId]) ? tmpRef[account.referralId] : 0
+              noOfReferrals: 0
             });
           }
         });
@@ -159,13 +150,46 @@ let getLeaderBoard = (req, res) => {
       next(null, final2);
     },
     (final2, next) => {
-      final2 = lodash.orderBy(final2, [sortBy], [order])
-      let final3 = final2.slice(start, end);
-      next(null, {
-        status: 200,
-        info: final3,
-        count: final2.length
-      });
+      if (searchKey) {
+        searchKey = searchKey.toLowerCase();
+        lodash.forEach(final2,
+          (fin) => {
+            if ((fin.deviceId).toLowerCase().indexOf(searchKey) > -1 ||
+              (fin.referralId).toLowerCase().indexOf(searchKey) > -1 ||
+              String((fin.rank)).indexOf(searchKey) > -1 ||
+              String((fin.tokens)).indexOf(searchKey) > -1 ||
+              String((fin.noOfReferrals)).indexOf(searchKey) > -1 ||
+              String((fin.totalUsage)).indexOf(searchKey) > -1 ||
+              String((fin.noOfSessions)).indexOf(searchKey) > -1
+            ) {
+              searched.push(fin);
+            }
+          });
+        next(null, final2);
+      } else next(null, final2);
+    },
+    (final2, next) => {
+      if (searchKey) {
+        let searched2 = lodash.orderBy(searched, [sortBy], [order]);
+        let searched3 = searched2.slice(start, end);
+        next(null, {
+          status: 200,
+          info: {
+            records: searched3,
+            count: searched2.length
+          }
+        });
+      } else {
+        final2 = lodash.orderBy(final2, [sortBy], [order])
+        let final3 = final2.slice(start, end);
+        next(null, {
+          status: 200,
+          info: {
+            records: final3,
+            count: final2.length
+          }
+        });
+      }
     }
   ], (error, success) => {
     let response = Object.assign({

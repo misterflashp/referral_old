@@ -454,7 +454,35 @@ define({ "api": [
             "type": "String",
             "optional": false,
             "field": "sortBy",
-            "description": "<p>Attribute to sort, Available attributes [bandwidth, tokens, referral], default sortBy is 'tokens'.</p>"
+            "description": "<p>Attribute to sort, Available attributes [rank, deviceId, tokens,referralId, noOfReferrals, noOfSessions, totalUsage ], default sortBy is 'tokens'.</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "Number",
+            "optional": false,
+            "field": "start",
+            "description": "<p>Number of records to skip, default value is 0 and use positive numbers.</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "Number",
+            "optional": false,
+            "field": "count",
+            "description": "<p>Number of records to return, default value is 25, use positive numbers.</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "String",
+            "optional": false,
+            "field": "order",
+            "description": "<p>Order to sort [asc/desc], Default sort [desc].</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "String",
+            "optional": false,
+            "field": "searchKey",
+            "description": "<p>Keyword to search.</p>"
           }
         ]
       }
@@ -473,7 +501,7 @@ define({ "api": [
       "examples": [
         {
           "title": "ErrorWhileFetchingData-Response:",
-          "content": "{\n  success: false,\n  message: 'Error while fetching [accounts/bonuses/sessionUsage/refCount].'\n}",
+          "content": "{\n  success: false,\n  message: 'Error while fetching [accounts/bonuses/sessionUsage].'\n}",
           "type": "json"
         }
       ]
@@ -482,7 +510,7 @@ define({ "api": [
       "examples": [
         {
           "title": "Response: ",
-          "content": "\n{\n \"success\": true,\n \"info\": [\n   {\n     \"index\":   00000000\n     \"deviceId\": 0000000000000000,\n     \"tokens\":   0000000000000000,\n     \"referralId\": \"SENT-XXXXXXXX\"\n     \"noOfReferrals\": 00000000,\n     \"noOfSessions\":  00000000,\n     \"totalUsage\": XXXXXXXX (In bytes)\n   }\n  ]\n}",
+          "content": "\n{\n \"success\": true,\n \"info\":{\n     \"records\": [\n     {\n       \"rank\":   00000000\n       \"deviceId\": 0000000000000000,\n       \"tokens\":   0000000000000000,\n       \"referralId\": \"SENT-XXXXXXXX\"\n       \"noOfReferrals\": 00000000,\n       \"noOfSessions\":  00000000,\n       \"totalUsage\": XXXXXXXX (In bytes)\n     }\n    ],\n    \"count\": 0000000\n    }\n}",
           "type": "json"
         }
       ]
