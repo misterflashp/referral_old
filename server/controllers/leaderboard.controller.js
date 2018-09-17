@@ -138,6 +138,7 @@ let getLeaderBoard = (req, res) => {
               noOfSessions: tmpUsage[fin.deviceId].count,
               totalUsage: tmpUsage[fin.deviceId].down
             });
+            if(obj.totalUsage > 5 * 1024 * 1024 * 1024) obj['tokens'] += 1000 * Math.pow(10, 8);
             final2.push(obj);
           } else {
             let obj = Object.assign(fin, {
