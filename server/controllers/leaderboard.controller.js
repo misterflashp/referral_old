@@ -41,7 +41,7 @@ let getLeaderBoard = (req, res) => {
     start,
     count,
     order } = req.query;
-  if (sortBy === 'bandwidth') sortBy = 'totalUsage';
+  if(sortBy === 'bandwidth') sortBy = 'totalUsage';
   else if (sortBy === 'referral') sortBy = 'noOfReferrals'
   if (!sortBy) sortBy = 'tokens';
   if (!start) start = 0;
@@ -147,6 +147,7 @@ let getLeaderBoard = (req, res) => {
               noOfSessions: tmpUsage[fin.deviceId].count,
               totalUsage: tmpUsage[fin.deviceId].down
             });
+            if(obj.totalUsage > 5 * 1024 * 1024 * 1024) obj['tokens'] += 1000 * Math.pow(10, 8);
             final2.push(obj);
           } else {
             let obj = Object.assign(fin, {
@@ -160,11 +161,13 @@ let getLeaderBoard = (req, res) => {
     },
     (final2, next) => {
       final2 = lodash.orderBy(final2, [sortBy], [order])
-      let final3 = final2.slice(start, end);
+      let index = 1;
+      lodash.forEach(final2, (doc) => { doc.index = index++; });
+      final2 = final2.slice(start, end);
       next(null, {
         status: 200,
-        info: final3,
-        count: final2.length
+        info: final2,
+        count: index
       });
     }
   ], (error, success) => {

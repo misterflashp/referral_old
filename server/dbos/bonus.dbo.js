@@ -71,28 +71,35 @@ let updateBonus = (deviceId, updateObject, cb) => {
 
 let getTotalBonus = (cb) => {
   BonusModel.aggregate([
-    { $project: { _id: '$deviceId', count: { $size: '$refBonusesInfo' }, refBonusesInfo: 1, slcBonusesInfo: 1, sncBonusesInfo: 1 } },
-    {
-      $group: {
-        _id: '$_id',
-        totalRefBonus: { $sum: { $sum: '$refBonusesInfo.amount' } },
-        totalSlcBonus: { $sum: { $sum: '$slcBonusesInfo.amount' } },
-        totalSncBonus: { $sum: { $sum: '$sncBonusesInfo.amount' } },
-        count: { $sum: '$count' },
-      }
-    }, {
-      $project: {
-        total: { $sum: ['$totalRefBonus', '$totalSlcBonus', '$totalSncBonus'] },
-        count: 1
-      }
-    }, {
-      $sort: {
-        total: -1
-      }
-    }]).exec((error, result) => {
-      if (error) cb(error, null);
-      else cb(null, result);
-    });
+  {
+    $project:{
+      _id:'$deviceId',
+      count:{
+        $size:'$refBonusesInfo'
+      },
+      refBonusesInfo:1,
+      slcBonusesInfo:1
+    }
+  },  {
+    $group: {
+      _id: '$_id',
+      totalRefBonus: { $sum: { $sum: '$refBonusesInfo.amount' } },
+      totalSlcBonus: { $sum: { $sum: '$slcBonusesInfo.amount' } },
+      count: {$sum: '$count'},
+    }
+  }, {
+    $project: {
+      total: { $sum: ['$totalRefBonus', '$totalSlcBonus'] },
+      count:1
+    }
+  }, {
+    $sort: {
+      total: -1
+    }
+  }]).exec((error, result) => {
+    if (error) cb(error, null);
+    else cb(null, result);
+  });
 };
 
 module.exports = {

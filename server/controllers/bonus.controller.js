@@ -2,6 +2,7 @@ let async = require('async');
 let lodash = require('lodash');
 let accountDbo = require('../dbos/account.dbo');
 let bonusDbo = require('../dbos/bonus.dbo');
+let sessionDbo = require('../dbos/session.dbo');
 let bonusHelper = require('../helpers/bonus.helper');
 let { CLAIM_PERIOD } = require('../../config/referral');
 
@@ -193,6 +194,7 @@ let getBonusInfo = (req, res) => {
   let refCount = 0;
   let referralId = null;
   let referredBy = null;
+  let usage = null;
   async.waterfall([
     (next) => {
       accountDbo.getAccount({ deviceId },
@@ -210,6 +212,18 @@ let getBonusInfo = (req, res) => {
             message: 'Device is not registered.'
           });
         });
+    }, (next) => {
+      sessionDbo.getTotalUsageOf(deviceId,
+        (error, result) => {
+          if (error) next({
+            status: 500,
+            message: 'Error occurred while getting usage.'
+          });
+          else {
+            usage = result.length ? result[0].down : 0;
+            next(null);
+          }
+        })
     }, (next) => {
       accountDbo.getReferrals(referralId,
         (error, referrals) => {
@@ -246,11 +260,11 @@ let getBonusInfo = (req, res) => {
       next(null, {
         status: 200,
         bonuses: {
-          snc: lodash.sum(lodash.map(sncBonusesInfo, 'amount')),
-          slc: lodash.sum(lodash.map(slcBonusesInfo, 'amount')),
-          ref: lodash.sum(lodash.map(refBonusesInfo, 'amount'))
+          snc: usage > 5 * 1024 * 1024 * 1024 ? 1000 * Math.pow(10, 8) : 0,
+          slc: bonuses.slcBonusesInfo.length ? bonuses.slcBonusesInfo[0].amount : 0,
+          ref: lodash.sum(lodash.map(bonuses.refBonusesInfo, 'amount'))
         },
-        refCount,
+        refCount: bonuses.refBonusesInfo.length,
         canClaim: amount && referredBy && (sessionDate && new Date() >= new Date(sessionDate + CLAIM_PERIOD)) ? true : false,
         canClaimAfter: sessionDate ? new Date(sessionDate + CLAIM_PERIOD) : null
       });
