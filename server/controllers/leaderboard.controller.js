@@ -92,7 +92,6 @@ let getLeaderBoard = (req, res) => {
       let final = [];
       let tmpFinal = {};
       let final2 = [];
-      let index = 0;
       lodash.forEach(accounts,
         (account) => {
           tmpAccounts[account.deviceId] = account.referralId;
@@ -108,9 +107,7 @@ let getLeaderBoard = (req, res) => {
       lodash.forEach(bonuses,
         (bonus) => {
           tmpFinal[bonus._id] = bonus._id;
-          index++;
           let obj = {
-            rank: index,
             deviceId: bonus._id,
             tokens: bonus.total,
             referralId: tmpAccounts[bonus._id],
@@ -121,9 +118,7 @@ let getLeaderBoard = (req, res) => {
       lodash.forEach(accounts,
         (account) => {
           if (!tmpFinal[account.deviceId]) {
-            index++;
             final.push({
-              rank: index,
               deviceId: account.deviceId,
               tokens: 0,
               referralId: account.referralId,
@@ -138,7 +133,6 @@ let getLeaderBoard = (req, res) => {
               noOfSessions: tmpUsage[fin.deviceId].count,
               totalUsage: tmpUsage[fin.deviceId].down
             });
-            if (obj.totalUsage > 5 * 1024 * 1024 * 1024) obj['tokens'] += 1000 * Math.pow(10, 8);
             final2.push(obj);
           } else {
             let obj = Object.assign(fin, {
@@ -149,7 +143,17 @@ let getLeaderBoard = (req, res) => {
           }
         });
       next(null, final2);
-    }, (final2, next) => {
+    },
+    (final2, next) => {
+      let index = 0 ;
+      lodash.forEach(final2,
+        (fin)=>{
+          index++;
+          fin.rank = index;
+        });
+      next(null, final2);
+    },
+    (final2,next) =>{
       if (searchKey) {
         searchKey = searchKey.toLowerCase();
         lodash.forEach(final2,
