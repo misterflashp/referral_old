@@ -133,6 +133,7 @@ let getLeaderBoard = (req, res) => {
               noOfSessions: tmpUsage[fin.deviceId].count,
               totalUsage: tmpUsage[fin.deviceId].down
             });
+            if (obj.totalUsage > 5 * 1024 * 1024 * 1024) obj['tokens'] += 1000 * Math.pow(10, 8);
             final2.push(obj);
           } else {
             let obj = Object.assign(fin, {
@@ -145,6 +146,7 @@ let getLeaderBoard = (req, res) => {
       next(null, final2);
     },
     (final2, next) => {
+      final2 = lodash.orderBy(final2, 'tokens', 'desc');
       let index = 0 ;
       lodash.forEach(final2,
         (fin)=>{
